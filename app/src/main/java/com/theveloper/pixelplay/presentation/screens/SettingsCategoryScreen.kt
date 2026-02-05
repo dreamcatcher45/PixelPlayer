@@ -175,6 +175,9 @@ fun SettingsCategoryScreen(
     LaunchedEffect(Unit) {
         settingsViewModel.dataTransferEvents.collectLatest { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     var showPaletteRegenerateSheet by remember { mutableStateOf(false) }
     var isPaletteRegenerateRunning by remember { mutableStateOf(false) }
     var paletteSongSearchQuery by remember { mutableStateOf("") }
