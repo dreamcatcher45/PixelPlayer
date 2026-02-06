@@ -47,6 +47,12 @@ enum class SettingsCategory(
         subtitle = "Gemini API key and AI features",
         iconRes = R.drawable.gemini_ai
     ),
+    BACKUP_RESTORE(
+        id = "backup_restore",
+        title = "Backup & Restore",
+        subtitle = "Export and recover your personal app data",
+        iconRes = R.drawable.rounded_upload_file_24
+    ),
     DEVELOPER(
         id = "developer",
         title = "Developer Options",

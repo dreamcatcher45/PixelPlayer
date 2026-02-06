@@ -416,6 +416,31 @@ class PlaybackStatsRepository @Inject constructor(
         )
     }
 
+    fun exportEventsForBackup(): List<PlaybackEvent> = synchronized(fileLock) {
+        readEventsLocked().map { event -> sanitizeEvent(event) }
+    }
+
+    fun importEventsFromBackup(
+        events: List<PlaybackEvent>,
+        clearExisting: Boolean = true
+    ) {
+        synchronized(fileLock) {
+            val base = if (clearExisting) {
+                emptyList()
+            } else {
+                readEventsLocked()
+            }
+            val merged = (base + events)
+                .map { event -> sanitizeEvent(event) }
+                .distinctBy { event ->
+                    "${event.songId}:${event.startMillis()}:${event.endMillis()}:${event.durationMs}"
+                }
+                .sortedBy { event -> event.timestamp }
+                .toMutableList()
+            writeEventsLocked(merged)
+        }
+    }
+
     private fun readEvents(): List<PlaybackEvent> = synchronized(fileLock) { readEventsLocked() }
 
     private fun readEventsLocked(): MutableList<PlaybackEvent> {
