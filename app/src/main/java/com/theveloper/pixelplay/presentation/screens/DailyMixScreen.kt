@@ -1,3 +1,4 @@
+
 package com.theveloper.pixelplay.presentation.screens
 
 import androidx.activity.compose.BackHandler
@@ -111,9 +112,9 @@ fun DailyMixScreen(
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsState()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsState()
 
+    val allSongs by playerViewModel.allSongsFlow.collectAsState(initial = emptyList())
+
     val showAiSheet by playerViewModel.showAiPlaylistSheet.collectAsState()
-    val isGeneratingAiPlaylist by playerViewModel.isGeneratingAiPlaylist.collectAsState()
-    val aiError by playerViewModel.aiError.collectAsState()
     val lazyListState = rememberLazyListState()
 
     var showSongInfoSheet by remember { mutableStateOf(false) }
@@ -127,18 +128,19 @@ fun DailyMixScreen(
                 playerViewModel.regenerateDailyMixWithPrompt(prompt)
                 showDailyMixMenu = false
             },
-            isLoading = isGeneratingAiPlaylist
+            isLoading = playerViewModel.isGeneratingAiPlaylist.collectAsState().value
         )
     }
 
     if (showAiSheet) {
         AiPlaylistSheet(
             onDismiss = { playerViewModel.dismissAiPlaylistSheet() },
-            onGenerateClick = { prompt, minLength, maxLength ->
-                playerViewModel.generateAiPlaylist(prompt, minLength, maxLength, saveAsPlaylist = false)
+            onGenerateClick = { prompt: String, minLength: Int, maxLength: Int, manualJson: String? ->
+                playerViewModel.generateAiPlaylist(prompt, manualJson, saveAsPlaylist = false)
             },
-            isGenerating = isGeneratingAiPlaylist,
-            error = aiError
+            isGenerating = playerViewModel.isGeneratingAiPlaylist.collectAsState().value,
+            error = playerViewModel.aiError.collectAsState().value,
+            availableSongs = allSongs
         )
     }
 
@@ -430,6 +432,7 @@ private fun ExpressiveDailyMixHeader(
                     }
                     val shape = threeShapeSwitch(index, thirdShapeCornerRadius = 30.dp)
 
+                    // --- INICIO DE LA CORRECCI├ôN ---
                     if (index == 2) {
                         Box(
                             modifier = Modifier.layout { measurable, constraints ->

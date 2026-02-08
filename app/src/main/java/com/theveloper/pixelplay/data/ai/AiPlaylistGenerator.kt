@@ -184,4 +184,29 @@ class AiPlaylistGenerator @Inject constructor(
 
         throw IllegalArgumentException("AI response did not contain a valid playlist.")
     }
+
+    /**
+     * Parses a manually provided JSON response string without making an API call.
+     * Useful for debugging and saving API tokens during development.
+     */
+    fun parseManualJsonResponse(
+        jsonString: String,
+        allSongs: List<Song>
+    ): Result<List<Song>> {
+        return try {
+            val songIds = extractPlaylistSongIds(jsonString)
+            val songMap = allSongs.associateBy { it.id }
+            val generatedPlaylist = songIds.mapNotNull { songMap[it] }
+
+            if (generatedPlaylist.isEmpty()) {
+                Result.failure(Exception("No matching songs found from the provided song IDs."))
+            } else {
+                Result.success(generatedPlaylist)
+            }
+        } catch (e: IllegalArgumentException) {
+            Result.failure(Exception(e.message ?: "Invalid JSON format for playlist."))
+        } catch (e: Exception) {
+            Result.failure(Exception("Error parsing manual JSON: ${e.message}"))
+        }
+    }
 }

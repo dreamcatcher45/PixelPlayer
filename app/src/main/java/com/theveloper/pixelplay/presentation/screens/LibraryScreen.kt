@@ -98,6 +98,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.theveloper.pixelplay.presentation.components.AiPlaylistSheet
 import coil.compose.AsyncImagePainter
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -212,10 +213,10 @@ fun LibraryScreen(
     playerViewModel: PlayerViewModel = hiltViewModel(),
     playlistViewModel: PlaylistViewModel = hiltViewModel()
 ) {
-    // La recolección de estados de alto nivel se mantiene mínima.
+    // La recolecci├│n de estados de alto nivel se mantiene m├¡nima.
     val context = LocalContext.current // Added context
     val lastTabIndex by playerViewModel.lastLibraryTabIndexFlow.collectAsState()
-    val favoriteIds by playerViewModel.favoriteSongIds.collectAsState() // Reintroducir favoriteIds aquí
+    val favoriteIds by playerViewModel.favoriteSongIds.collectAsState() // Reintroducir favoriteIds aqu├¡
     val scope = rememberCoroutineScope() // Mantener si se usa para acciones de UI
     val syncManager = playerViewModel.syncManager
     var isRefreshing by remember { mutableStateOf(false) }
@@ -252,8 +253,6 @@ fun LibraryScreen(
     val isSortSheetVisible by playerViewModel.isSortingSheetVisible.collectAsState()
     val libraryUiState by playerViewModel.playerUiState.collectAsState()
     val hasGeminiApiKey by playerViewModel.hasGeminiApiKey.collectAsState()
-    val isGeneratingAiPlaylist by playerViewModel.isGeneratingAiPlaylist.collectAsState()
-    val aiError by playerViewModel.aiError.collectAsState()
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showPlaylistCreationTypeDialog by remember { mutableStateOf(false) }
     var showCreateAiPlaylistDialog by remember { mutableStateOf(false) }
@@ -347,31 +346,6 @@ fun LibraryScreen(
                 showCreatePlaylistDialog = false
                 Toast.makeText(context, "Playlist created successfully", Toast.LENGTH_SHORT).show()
             }
-        }
-    }
-
-    LaunchedEffect(
-        showCreateAiPlaylistDialog,
-        aiGenerationRequestedFromDialog,
-        isGeneratingAiPlaylist,
-        aiError
-    ) {
-        if (!showCreateAiPlaylistDialog || !aiGenerationRequestedFromDialog || isGeneratingAiPlaylist) {
-            return@LaunchedEffect
-        }
-
-        if (aiError == null) {
-            showCreateAiPlaylistDialog = false
-            playerViewModel.clearAiPlaylistError()
-        }
-        aiGenerationRequestedFromDialog = false
-    }
-
-    LaunchedEffect(hasGeminiApiKey, showCreateAiPlaylistDialog) {
-        if (!hasGeminiApiKey && showCreateAiPlaylistDialog) {
-            showCreateAiPlaylistDialog = false
-            aiGenerationRequestedFromDialog = false
-            playerViewModel.clearAiPlaylistError()
         }
     }
     // La lógica de carga diferida (lazy loading) se mantiene.
@@ -502,14 +476,14 @@ fun LibraryScreen(
             )
         }
     ) { innerScaffoldPadding ->
-        Box( // Box para permitir superposición del indicador de carga
+        Box( // Box para permitir superposici├│n del indicador de carga
             modifier = Modifier
                 .padding(top = innerScaffoldPadding.calculateTopPadding())
                 .fillMaxSize()
         ) {
             Column(
                 modifier = Modifier
-                    // .padding(innerScaffoldPadding) // El padding ya está en el Box contenedor
+                    // .padding(innerScaffoldPadding) // El padding ya est├í en el Box contenedor
                     .background(brush = Brush.verticalGradient(gradientColors))
                     .fillMaxSize()
             ) {
@@ -596,7 +570,7 @@ fun LibraryScreen(
                     // shape = AbsoluteSmoothCornerShape(cornerRadiusTL = 24.dp, smoothnessAsPercentTR = 60, /*...*/) // Your custom shape
                 ) {
                     Column(Modifier.fillMaxSize()) {
-                        // OPTIMIZACIÓN: La lógica de ordenamiento ahora es más eficiente.
+                        // OPTIMIZACI├ôN: La l├│gica de ordenamiento ahora es m├ís eficiente.
                         val availableSortOptions by playerViewModel.availableSortOptions.collectAsState()
                         val sanitizedSortOptions = remember(availableSortOptions, currentTabId) {
                             val cleaned = availableSortOptions.filterIsInstance<SortOption>()
@@ -1137,27 +1111,6 @@ fun LibraryScreen(
 
     val allSongs by playerViewModel.allSongsFlow.collectAsState(initial = emptyList())
 
-    PlaylistCreationTypeDialog(
-        visible = showPlaylistCreationTypeDialog,
-        onDismiss = { showPlaylistCreationTypeDialog = false },
-        onManualSelected = {
-            showPlaylistCreationTypeDialog = false
-            showCreatePlaylistDialog = true
-        },
-        onAiSelected = {
-            if (hasGeminiApiKey) {
-                showPlaylistCreationTypeDialog = false
-                playerViewModel.clearAiPlaylistError()
-                showCreateAiPlaylistDialog = true
-            } else {
-                Toast.makeText(context, "Set your Gemini API key first", Toast.LENGTH_SHORT).show()
-            }
-        },
-        isAiEnabled = hasGeminiApiKey,
-        onSetupAiClick = {
-            navController.navigate(Screen.SettingsCategory.createRoute("ai"))
-        }
-    )
 
     CreatePlaylistDialog(
         visible = showCreatePlaylistDialog,
@@ -1184,26 +1137,26 @@ fun LibraryScreen(
         }
     )
 
-    CreateAiPlaylistDialog(
-        visible = showCreateAiPlaylistDialog && hasGeminiApiKey,
-        isGenerating = isGeneratingAiPlaylist,
-        error = aiError,
-        onDismiss = {
-            showCreateAiPlaylistDialog = false
-            aiGenerationRequestedFromDialog = false
-            playerViewModel.clearAiPlaylistError()
-        },
-        onGenerate = { playlistName, prompt, minLength, maxLength ->
-            aiGenerationRequestedFromDialog = true
-            playerViewModel.generateAiPlaylist(
-                prompt = prompt,
-                minLength = minLength,
-                maxLength = maxLength,
-                saveAsPlaylist = true,
-                playlistName = playlistName
-            )
-        }
-    )
+
+    val showAiSheet by playerViewModel.showAiPlaylistSheet.collectAsState()
+
+    if (showAiSheet) {
+        val allSongs by playerViewModel.allSongsFlow.collectAsState(initial = emptyList())
+        
+        AiPlaylistSheet(
+            onDismiss = { playerViewModel.dismissAiPlaylistSheet() },
+            onGenerateClick = { prompt: String, minLength: Int, maxLength: Int, manualJson: String? ->
+                playerViewModel.generateAiPlaylist(
+                    prompt = prompt,
+                    manualJson = manualJson,
+                    saveAsPlaylist = true
+                )
+            },
+            isGenerating = playerViewModel.isGeneratingAiPlaylist.collectAsState().value,
+            error = playerViewModel.aiError.collectAsState().value,
+            availableSongs = allSongs
+        )
+    }
 
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
@@ -1409,13 +1362,13 @@ fun LibraryNavigationPill(
 
     val pillRadius = 26.dp
     val innerRadius = 4.dp
-    // Radio para cuando está expandido/seleccionado (totalmente redondo)
+    // Radio para cuando est├í expandido/seleccionado (totalmente redondo)
     val expandedRadius = 60.dp
 
-    // Animación Esquina Flecha (Interna):
+    // Animaci├│n Esquina Flecha (Interna):
     // Depende de 'isExpanded':
-    // - true: Se vuelve redonda (expandedRadius/pillRadius) separándose visualmente.
-    // - false: Se mantiene recta (innerRadius) pareciendo unida al título.
+    // - true: Se vuelve redonda (expandedRadius/pillRadius) separ├índose visualmente.
+    // - false: Se mantiene recta (innerRadius) pareciendo unida al t├¡tulo.
     val animatedArrowCorner by animateDpAsState(
         targetValue = if (isExpanded) pillRadius else innerRadius,
         label = "ArrowCornerAnimation"
@@ -1490,7 +1443,7 @@ fun LibraryNavigationPill(
             }
         }
 
-        // --- PARTE 2: FLECHA (Cambia de forma según estado) ---
+        // --- PARTE 2: FLECHA (Cambia de forma seg├║n estado) ---
         Surface(
             shape = RoundedCornerShape(
                 topStart = animatedArrowCorner, // Anima entre 4.dp y 26.dp
@@ -1525,7 +1478,7 @@ fun LibraryNavigationPill(
                 Icon(
                     modifier = Modifier.rotate(arrowRotation),
                     imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Expandir menú",
+                    contentDescription = "Expandir men├║",
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
@@ -1742,7 +1695,6 @@ fun LibraryFoldersTab(
     onRegisterLocateCurrentSongAction: ((() -> Unit)?) -> Unit = {}
 ) {
     // List state moved inside AnimatedContent to prevent state sharing issues during transitions
-
 
     AnimatedContent(
         targetState = Pair(isPlaylistView, currentFolder?.path ?: "root"),
@@ -2067,7 +2019,7 @@ private fun MusicFolder.collectAllSongs(): List<Song> {
     return songs + subFolders.flatMap { it.collectAllSongs() }
 }
 
-// NUEVA Pestaña para Favoritos
+// NUEVA Pesta├▒a para Favoritos
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun LibraryFavoritesTab(
@@ -2291,7 +2243,7 @@ fun LibrarySongsTab(
     } else {
         // Determine content based on loading state and data availability
         when {
-            isLoadingInitial && songs.isEmpty() -> { // Este caso ya está cubierto arriba, pero es bueno para claridad
+            isLoadingInitial && songs.isEmpty() -> { // Este caso ya est├í cubierto arriba, pero es bueno para claridad
                 val allSongsPullToRefreshState = rememberPullToRefreshState()
                 PullToRefreshBox(
                     isRefreshing = isRefreshing,
@@ -2398,8 +2350,8 @@ fun LibrarySongsTab(
                                 // Estabilizar lambdas
                                 val rememberedOnMoreOptionsClick: (Song) -> Unit =
                                     remember(onMoreOptionsClick) {
-                                        // Esta es la lambda que `remember` ejecutará para producir el valor recordado.
-                                        // El valor recordado es la propia función `onMoreOptionsClick` (o una lambda que la llama).
+                                        // Esta es la lambda que `remember` ejecutar├í para producir el valor recordado.
+                                        // El valor recordado es la propia funci├│n `onMoreOptionsClick` (o una lambda que la llama).
                                         { songFromListItem -> // Esta es la lambda (Song) -> Unit que se recuerda
                                             onMoreOptionsClick(songFromListItem)
                                         }
@@ -2895,7 +2847,7 @@ fun LibraryAlbumsTab(
                                     album = album,
                                     albumColorSchemePairFlow = albumSpecificColorSchemeFlow,
                                     onClick = rememberedOnClick,
-                                    isLoading = isLoading && albums.isEmpty() // Shimmer solo si está cargando Y la lista está vacía
+                                    isLoading = isLoading && albums.isEmpty() // Shimmer solo si est├í cargando Y la lista est├í vac├¡a
                                 )
                             }
                         }
@@ -2930,7 +2882,7 @@ fun AlbumGridItemRedesigned(
     val albumColorSchemePair by albumColorSchemePairFlow.collectAsState()
     val systemIsDark = LocalPixelPlayDarkTheme.current
 
-    // 1. Obtén el colorScheme del tema actual aquí, en el scope Composable.
+    // 1. Obt├⌐n el colorScheme del tema actual aqu├¡, en el scope Composable.
     val currentMaterialColorScheme = MaterialTheme.colorScheme
 
     val itemDesignColorScheme = remember(albumColorSchemePair, systemIsDark, currentMaterialColorScheme) {
@@ -3007,10 +2959,10 @@ fun AlbumGridItemRedesigned(
                     var isLoadingImage by remember { mutableStateOf(true) }
                     SmartImage(
                         model = album.albumArtUriString,
-                        contentDescription = "Carátula de ${album.title}",
+                        contentDescription = "Car├ítula de ${album.title}",
                         contentScale = ContentScale.Crop,
-                            // Reducido el tamaño para mejorar el rendimiento del scroll, como se sugiere en el informe.
-                            // ContentScale.Crop se encargará de ajustar la imagen al aspect ratio.
+                            // Reducido el tama├▒o para mejorar el rendimiento del scroll, como se sugiere en el informe.
+                            // ContentScale.Crop se encargar├í de ajustar la imagen al aspect ratio.
                             targetSize = Size(256, 256),
                         modifier = Modifier
                             .aspectRatio(3f / 2f)
@@ -3339,7 +3291,7 @@ fun AlbumListItem(
                     var isLoadingImage by remember { mutableStateOf(true) }
                     SmartImage(
                         model = album.albumArtUriString,
-                        contentDescription = "Carátula de ${album.title}",
+                        contentDescription = "Car├ítula de ${album.title}",
                         contentScale = ContentScale.Crop,
                         targetSize = Size(256, 256),
                         modifier = Modifier.fillMaxSize(),

@@ -1,3 +1,4 @@
+
 package com.theveloper.pixelplay.presentation.viewmodel
 
 import android.content.Context
@@ -88,17 +89,7 @@ class AiStateHolder @Inject constructor(
         _isGeneratingAiPlaylist.value = false
     }
 
-    fun clearAiPlaylistError() {
-        _aiError.value = null
-    }
-
-    fun generateAiPlaylist(
-        prompt: String,
-        minLength: Int,
-        maxLength: Int,
-        saveAsPlaylist: Boolean = false,
-        playlistName: String? = null
-    ) {
+    fun generateAiPlaylist(prompt: String, manualJson: String?, saveAsPlaylist: Boolean = false) {
         val scope = this.scope ?: return
         val allSongs = allSongsProvider?.invoke() ?: emptyList()
         val favoriteIds = favoriteSongIdsProvider?.invoke() ?: emptySet()
@@ -108,33 +99,39 @@ class AiStateHolder @Inject constructor(
             _aiError.value = null
 
             try {
-                val existingPlaylistNames = userPreferencesRepository.userPlaylistsFlow.first()
-                    .map { it.name.trim() }
-                    .filter { it.isNotEmpty() }
-                    .toSet()
+                val result = if (manualJson != null) {
+                    // Parse manual JSON response
+                    aiPlaylistGenerator.parseManualJsonResponse(manualJson, allSongs)
+                } else {
+                    // Generate candidate pool using DailyMixManager logic
+                    val candidatePool = dailyMixManager.generateDailyMix(
+                        allSongs = allSongs,
+                        favoriteSongIds = favoriteIds,
+                        limit = 120
+                    )
 
-                // Generate candidate pool using DailyMixManager logic
-                val candidatePool = dailyMixManager.generateDailyMix(
-                    allSongs = allSongs,
-                    favoriteSongIds = favoriteIds,
-                    limit = 120
-                )
+                    // Default lengths if not specified
+                    val minLength = 5
+                    val maxLength = 20
 
-                val result = aiPlaylistGenerator.generate(
-                    userPrompt = prompt,
-                    allSongs = allSongs,
-                    minLength = minLength,
-                    maxLength = maxLength,
-                    candidateSongs = candidatePool
-                )
+                    aiPlaylistGenerator.generate(
+                        userPrompt = prompt,
+                        allSongs = allSongs,
+                        minLength = minLength,
+                        maxLength = maxLength,
+                        candidateSongs = candidatePool
+                    )
+                }
 
                 result.onSuccess { generatedSongs ->
                     if (generatedSongs.isNotEmpty()) {
                         if (saveAsPlaylist) {
+                            val playlistName = "AI Generated Playlist"
+                            val existingNames = emptySet<String>()
                             val resolvedPlaylistName = resolveAiPlaylistName(
                                 requestedName = playlistName,
                                 prompt = prompt,
-                                existingNames = existingPlaylistNames
+                                existingNames = existingNames
                             )
                             val songIds = generatedSongs.map { it.id }
                             userPreferencesRepository.createPlaylist(
@@ -304,3 +301,5 @@ class AiStateHolder @Inject constructor(
         }
     }
 }
+
+

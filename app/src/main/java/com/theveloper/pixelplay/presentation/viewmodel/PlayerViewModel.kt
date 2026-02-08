@@ -1,3 +1,4 @@
+
 package com.theveloper.pixelplay.presentation.viewmodel
 
 import android.annotation.SuppressLint
@@ -1311,7 +1312,7 @@ class PlayerViewModel @Inject constructor(
                     _isSheetVisible.value = true
                 } else {
                     Log.w("PlayerViewModel", "Artist '${artist.name}' has no playable songs.")
-                    // podrías emitir un evento Toast
+                    // podr├¡as emitir un evento Toast
                 }
             } catch (e: Exception) {
                 Log.e("PlayerViewModel", "Error playing artist ${artist.name}", e)
@@ -2659,24 +2660,8 @@ class PlayerViewModel @Inject constructor(
         aiStateHolder.dismissAiPlaylistSheet()
     }
 
-    fun clearAiPlaylistError() {
-        aiStateHolder.clearAiPlaylistError()
-    }
-
-    fun generateAiPlaylist(
-        prompt: String,
-        minLength: Int,
-        maxLength: Int,
-        saveAsPlaylist: Boolean = false,
-        playlistName: String? = null
-    ) {
-        aiStateHolder.generateAiPlaylist(
-            prompt = prompt,
-            minLength = minLength,
-            maxLength = maxLength,
-            saveAsPlaylist = saveAsPlaylist,
-            playlistName = playlistName
-        )
+    fun generateAiPlaylist(prompt: String, manualJson: String?, saveAsPlaylist: Boolean = false) {
+        aiStateHolder.generateAiPlaylist(prompt, manualJson, saveAsPlaylist)
     }
 
     fun regenerateDailyMixWithPrompt(prompt: String) {
@@ -3156,10 +3141,10 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * Busca la letra de la canción actual en el servicio remoto.
+     * Busca la letra de la canci├│n actual en el servicio remoto.
      */
     /**
-     * Busca la letra de la canción actual en el servicio remoto.
+     * Busca la letra de la canci├│n actual en el servicio remoto.
      */
     fun fetchLyricsForCurrentSong(forcePickResults: Boolean = false) {
         val currentSong = stablePlayerState.value.currentSong ?: return
@@ -3193,7 +3178,7 @@ class PlayerViewModel @Inject constructor(
 
     /**
      * Procesa la letra importada de un archivo, la guarda y actualiza la UI.
-     * @param songId El ID de la canción para la que se importa la letra.
+     * @param songId El ID de la canci├│n para la que se importa la letra.
      * @param lyricsContent El contenido de la letra como String.
      */
     fun importLyricsFromFile(songId: Long, lyricsContent: String) {
@@ -3209,7 +3194,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * Resetea el estado de la búsqueda de letras a Idle.
+     * Resetea el estado de la b├║squeda de letras a Idle.
      */
     fun resetLyricsSearchState() {
         lyricsStateHolder.resetSearchState()
